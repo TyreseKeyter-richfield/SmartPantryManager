@@ -97,7 +97,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             String steps = cursor.getString(cursor.getColumnIndexOrThrow("steps"));
             List<String> ingredients = new ArrayList<>();
             Cursor ingCursor = db.rawQuery(
-                    "SELECT ingredientname FROM " + TABLE_RECIPE_INGREDIENTS + "WHERE recipeid = ?",
+                    "SELECT ingredientname FROM " + TABLE_RECIPE_INGREDIENTS + " WHERE recipeid = ?",
                     new String[]{String.valueOf(id)});
             while (ingCursor.moveToNext()){
                 ingredients.add(ingCursor.getString(0));
@@ -109,5 +109,78 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.close();
         return recipes;
     }
-    private
+    private String normalize(String raw){
+        String s= raw.trim().toLowerCase();
+        if (s.endsWith("es")){
+            s=s.substring(0, s.length()-2);
+        } else if (s.endsWith("s") && !s.endsWith("ss")){
+            s=s.substring(0, s.length()-1);
+        }
+        return s;
+    }
+    public List<Recipe> getsuggestedrecipes(){
+        List<Ingredient>pantry =getallIngredients();
+        List<Recipe> allrecipes = getAllRecipes();
+        List<Recipe> suggested = new ArrayList<>();
+        List<String>pantrynames=new ArrayList<>();
+        for (Ingredient item: pantry){
+            pantrynames.add(normalize(item.getName()));
+        }
+        for (Recipe recipe: allrecipes){
+            boolean hasallingredient = true;
+            for (String required : recipe.getRequiredingredients()){
+                if (!pantrynames.contains(normalize(required))){
+                    hasallingredient=false;
+                    break;
+                }
+            }
+            if (hasallingredient){
+                suggested.add(recipe);
+            }
+        }
+        return suggested;
+    }
+    public List<Recipe> getalmostthererecipes(){
+        List<Ingredient> pantry = getallIngredients();
+        List<Recipe> allRecipes = getAllRecipes();
+        List<Recipe> almostthere = new ArrayList<>();
+        List<String> pantrynames = new ArrayList<>();
+        for (Ingredient item: pantry){
+            pantrynames.add(normalize(item.getName()));
+        }
+        for (Recipe recipe : allRecipes){
+            int missingCount=0;
+            for (String required: recipe.getRequiredingredients()){
+                if (!pantrynames.contains(normalize(required))){
+                    missingCount++;
+                }
+            }
+            if (missingCount==1){
+                almostthere.add(recipe);
+            }
+        }
+        return almostthere;
+    }
+    private void seedrecipes(SQLiteDatabase db) {
+        addseedrecipe(db, "Chicken Soup", "Simmer chicken with stock and carrot.",
+                Arrays.asList("chicken", "stock", "carrot"));
+        addseedrecipe(db, "Grilled Cheese", "Butter bread, add cheese, grill both sides of the sandwich",
+                Arrays.asList("bread", "butter", "cheese"));
+        addseedrecipe(db, "Cheese Omelette", "Beat eggs, pour into pan, add cheese, fold onto each other when ready.",
+                Arrays.asList("egg", "cheese", "butter"));
+    }
+
+    private void addseedrecipe(SQLiteDatabase db, String name, String steps, List<String> ingredients) {
+        ContentValues recipeValues = new ContentValues();
+        recipeValues.put("name", name);
+        recipeValues.put("steps", steps);
+        long recipeId = db.insert(TABLE_RECIPES, null, recipeValues);
+
+        for (String ing : ingredients) {
+            ContentValues ingValues = new ContentValues();
+            ingValues.put("recipe_id", recipeId);
+            ingValues.put("ingredient_name", ing);
+            db.insert(TABLE_RECIPE_INGREDIENTS, null, ingValues);
+        }
+    }
 }

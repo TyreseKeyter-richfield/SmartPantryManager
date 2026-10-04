@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.TyreseKeyter.smartpantrymanager.DatabaseHelper;
 import com.TyreseKeyter.smartpantrymanager.Recipe;
 import java.util.List;
+
 public class SuggestedRecipesActivity extends AppCompatActivity{
     private DatabaseHelper databaseHelper;
     @Override
